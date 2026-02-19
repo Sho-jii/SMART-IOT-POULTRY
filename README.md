@@ -1,0 +1,1 @@
+This is a Next.js 15 web dashboard for IoT-based poultry farm monitoring and control. It integrates with an ESP32 microcontroller via Firebase Realtime Database to automate feeding, watering, and environmental monitoring.
