@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react"
 import { ref, onValue, remove, query, limitToLast, orderByChild } from "firebase/database"
 import { initFirebase } from "@/lib/firebase"
-import { Trash2, ChevronDown, ChevronUp } from "lucide-react"
+import { Trash2, ChevronDown, ChevronUp, AlertTriangle } from "lucide-react"
+import { toast } from "sonner"
 
 interface AlertEvent {
   id: string
@@ -36,7 +37,6 @@ export default function RecentAlerts({ className = "" }: RecentAlertsProps) {
     }
 
     try {
-      // Use query to limit to last 100 events, ordered by timestamp
       const eventsRef = query(ref(firebase.database, "/events"), orderByChild("timestamp"), limitToLast(100))
 
       const unsubscribe = onValue(
@@ -51,12 +51,10 @@ export default function RecentAlerts({ className = "" }: RecentAlertsProps) {
             return
           }
 
-          // Convert to array and sort by timestamp (newest first)
           const eventsArray = Object.entries(events)
             .map(([key, value]: [string, any]) => ({
               id: key,
               ...value,
-              // Ensure timestamp is a number
               timestamp: typeof value.timestamp === "string" ? Number(value.timestamp) : value.timestamp,
             }))
             .sort((a, b) => b.timestamp - a.timestamp)
@@ -82,7 +80,6 @@ export default function RecentAlerts({ className = "" }: RecentAlertsProps) {
     }
   }, [])
 
-  // Apply time filter to events
   const applyTimeFilter = (events: AlertEvent[], filter: "day" | "week" | "month" | "all") => {
     if (filter === "all") {
       setFilteredEvents(events)
@@ -94,16 +91,15 @@ export default function RecentAlerts({ className = "" }: RecentAlertsProps) {
 
     switch (filter) {
       case "day":
-        // Start of today
         const today = new Date()
         today.setHours(0, 0, 0, 0)
         cutoffTime = Math.floor(today.getTime() / 1000)
         break
       case "week":
-        cutoffTime = now - 7 * 24 * 60 * 60 // 7 days ago
+        cutoffTime = now - 7 * 24 * 60 * 60
         break
       case "month":
-        cutoffTime = now - 30 * 24 * 60 * 60 // 30 days ago
+        cutoffTime = now - 30 * 24 * 60 * 60
         break
       default:
         cutoffTime = 0
@@ -113,13 +109,11 @@ export default function RecentAlerts({ className = "" }: RecentAlertsProps) {
     setFilteredEvents(filtered)
   }
 
-  // Handle filter change
   const handleFilterChange = (filter: "day" | "week" | "month" | "all") => {
     setTimeFilter(filter)
     applyTimeFilter(alertEvents, filter)
   }
 
-  // Delete an alert event
   const deleteAlert = async (id: string) => {
     const firebase = initFirebase()
     if (!firebase?.database) {
@@ -129,33 +123,25 @@ export default function RecentAlerts({ className = "" }: RecentAlertsProps) {
 
     try {
       setIsDeleting((prev) => ({ ...prev, [id]: true }))
-
-      // Delete the event from Firebase
       await remove(ref(firebase.database, `/events/${id}`))
-
-      // Update local state
       setAlertEvents((prev) => prev.filter((event) => event.id !== id))
       setFilteredEvents((prev) => prev.filter((event) => event.id !== id))
+      toast.success("Alert Dismissed")
     } catch (error) {
       console.error("Error deleting alert:", error)
+      toast.error("Failed to delete alert")
     } finally {
       setIsDeleting((prev) => ({ ...prev, [id]: false }))
     }
   }
 
-  // Toggle show all/less
   const toggleShowAll = () => {
     setShowAll(!showAll)
   }
 
-  // Helper function to get description from event type
   const getDescriptionFromType = (event: AlertEvent) => {
-    // Use the description from the event if available
-    if (event.description) {
-      return event.description
-    }
+    if (event.description) return event.description
 
-    // Otherwise, generate a description based on the type
     switch (event.type) {
       case "highTemperature":
         return "Temperature exceeded safe threshold"
@@ -174,7 +160,6 @@ export default function RecentAlerts({ className = "" }: RecentAlertsProps) {
     }
   }
 
-  // Helper function to get status badge class
   const getStatusBadgeClass = (type: string) => {
     switch (type) {
       case "highTemperature":
@@ -182,15 +167,14 @@ export default function RecentAlerts({ className = "" }: RecentAlertsProps) {
       case "lowFood":
       case "lowWaterMain":
       case "lowWaterDrinker":
-        return "bg-red-500"
+        return "bg-brick/15 text-brick border border-brick/30"
       case "feeding":
-        return "bg-green-500"
+        return "bg-sage/15 text-sage border border-sage/30"
       default:
-        return "bg-gray-500"
+        return "bg-muted text-muted-foreground border border-border/30"
     }
   }
 
-  // Helper function to get status text
   const getStatusText = (type: string) => {
     switch (type) {
       case "highTemperature":
@@ -206,81 +190,41 @@ export default function RecentAlerts({ className = "" }: RecentAlertsProps) {
     }
   }
 
-  // Format timestamp to readable date/time
   const formatTimestamp = (timestamp: number) => {
     return new Date(timestamp * 1000).toLocaleString()
   }
 
-  // Get visible events based on showAll state
   const visibleEvents = showAll ? filteredEvents : filteredEvents.slice(0, MAX_VISIBLE_ITEMS)
 
   return (
-    <div className={`bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden ${className}`}>
-      <div className="bg-gray-700 text-white p-4">
-        <h2 className="text-lg font-semibold flex items-center">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="w-5 h-5 mr-2"
-          >
-            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-            <line x1="12" y1="9" x2="12" y2="13" />
-            <line x1="12" y1="17" x2="12.01" y2="17" />
-          </svg>
+    <div className={`glass-card overflow-hidden ${className}`}>
+      {/* Header */}
+      <div className="bg-card/80 backdrop-blur-sm p-4 border-b border-border/50">
+        <h2 className="font-heading text-lg font-semibold flex items-center text-foreground">
+          <div className="w-8 h-8 rounded-lg bg-gradient-warm flex items-center justify-center mr-3">
+            <AlertTriangle size={16} className="text-white" />
+          </div>
           Recent Alerts & Events
         </h2>
       </div>
 
       {/* Filter controls */}
-      <div className="bg-gray-100 dark:bg-gray-700 px-4 py-2 flex justify-between items-center border-b border-gray-200 dark:border-gray-600">
-        <div className="flex space-x-2">
-          <button
-            onClick={() => handleFilterChange("day")}
-            className={`px-2 py-1 text-xs rounded ${
-              timeFilter === "day"
-                ? "bg-blue-500 text-white"
-                : "bg-gray-200 text-gray-700 dark:bg-gray-600 dark:text-gray-200"
-            }`}
-          >
-            Today
-          </button>
-          <button
-            onClick={() => handleFilterChange("week")}
-            className={`px-2 py-1 text-xs rounded ${
-              timeFilter === "week"
-                ? "bg-blue-500 text-white"
-                : "bg-gray-200 text-gray-700 dark:bg-gray-600 dark:text-gray-200"
-            }`}
-          >
-            Week
-          </button>
-          <button
-            onClick={() => handleFilterChange("month")}
-            className={`px-2 py-1 text-xs rounded ${
-              timeFilter === "month"
-                ? "bg-blue-500 text-white"
-                : "bg-gray-200 text-gray-700 dark:bg-gray-600 dark:text-gray-200"
-            }`}
-          >
-            Month
-          </button>
-          <button
-            onClick={() => handleFilterChange("all")}
-            className={`px-2 py-1 text-xs rounded ${
-              timeFilter === "all"
-                ? "bg-blue-500 text-white"
-                : "bg-gray-200 text-gray-700 dark:bg-gray-600 dark:text-gray-200"
-            }`}
-          >
-            All
-          </button>
+      <div className="bg-muted/30 px-4 py-2.5 flex justify-between items-center border-b border-border/30">
+        <div className="flex gap-1.5">
+          {(["day", "week", "month", "all"] as const).map((filter) => (
+            <button
+              key={filter}
+              onClick={() => handleFilterChange(filter)}
+              className={`px-2.5 py-1 text-xs font-medium rounded-lg transition-colors ${timeFilter === filter
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted/50 text-muted-foreground hover:text-foreground hover:bg-muted"
+                }`}
+            >
+              {filter === "day" ? "Today" : filter.charAt(0).toUpperCase() + filter.slice(1)}
+            </button>
+          ))}
         </div>
-        <div className="text-xs text-gray-500 dark:text-gray-300">
+        <div className="text-xs text-muted-foreground">
           {filteredEvents.length} {filteredEvents.length === 1 ? "event" : "events"}
         </div>
       </div>
@@ -288,36 +232,40 @@ export default function RecentAlerts({ className = "" }: RecentAlertsProps) {
       <div className="p-4">
         {isLoading ? (
           <div className="flex justify-center items-center h-40">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary/30 border-t-primary"></div>
           </div>
         ) : error ? (
-          <div className="text-red-500 text-center p-4">{error}</div>
+          <div className="text-brick text-center p-4 text-sm">{error}</div>
         ) : filteredEvents.length === 0 ? (
-          <div className="text-gray-500 dark:text-gray-400 text-center p-4">No recent alerts or events</div>
+          <div className="text-muted-foreground text-center p-8 text-sm">No recent alerts or events</div>
         ) : (
           <div>
-            <div className="divide-y divide-gray-200 dark:divide-gray-700 max-h-[400px] overflow-y-auto">
-              {visibleEvents.map((event) => (
-                <div key={event.id} className="py-3 flex items-start">
+            <div className="divide-y divide-border/30 max-h-[400px] overflow-y-auto">
+              {visibleEvents.map((event, index) => (
+                <div
+                  key={event.id}
+                  className="py-3 flex items-start animate-fade-in"
+                  style={{ animationDelay: `${index * 30}ms` }}
+                >
                   <div
-                    className={`${getStatusBadgeClass(event.type)} text-white text-xs font-medium px-2 py-1 rounded-md mr-3 mt-0.5`}
+                    className={`${getStatusBadgeClass(event.type)} text-xs font-medium px-2 py-1 rounded-lg mr-3 mt-0.5`}
                   >
                     {getStatusText(event.type)}
                   </div>
-                  <div className="flex-1">
-                    <div className="font-medium text-gray-800 dark:text-gray-200">{getDescriptionFromType(event)}</div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">{formatTimestamp(event.timestamp)}</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-foreground text-sm">{getDescriptionFromType(event)}</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">{formatTimestamp(event.timestamp)}</div>
                   </div>
                   <button
                     onClick={() => deleteAlert(event.id)}
                     disabled={isDeleting[event.id]}
-                    className="text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
+                    className="text-muted-foreground hover:text-brick transition-colors p-1.5 rounded-lg hover:bg-brick/10 flex-shrink-0 ml-2"
                     title="Delete alert"
                   >
                     {isDeleting[event.id] ? (
-                      <div className="h-5 w-5 animate-spin rounded-full border-b-2 border-gray-500 dark:border-gray-400"></div>
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-muted-foreground" />
                     ) : (
-                      <Trash2 size={18} />
+                      <Trash2 size={16} />
                     )}
                   </button>
                 </div>
@@ -328,7 +276,7 @@ export default function RecentAlerts({ className = "" }: RecentAlertsProps) {
             {filteredEvents.length > MAX_VISIBLE_ITEMS && (
               <button
                 onClick={toggleShowAll}
-                className="mt-4 w-full py-2 text-sm text-blue-500 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 flex items-center justify-center"
+                className="mt-4 w-full py-2.5 text-sm text-primary hover:text-primary/80 flex items-center justify-center rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors font-medium"
               >
                 {showAll ? (
                   <>

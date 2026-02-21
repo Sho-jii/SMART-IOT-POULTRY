@@ -38,7 +38,7 @@ export default function HistoricalChart({ className = "" }: HistoricalChartProps
   const [visibleData, setVisibleData] = useState<HistoryDataPoint[]>([])
   const [currentPage, setCurrentPage] = useState(0)
   const [totalPages, setTotalPages] = useState(1)
-  const [pointsPerPage, setPointsPerPage] = useState(24) // Default for day view
+  const [pointsPerPage, setPointsPerPage] = useState(24)
   const chartRef = useRef<any>(null)
   const [isDarkMode, setIsDarkMode] = useState(false)
   const [chartData, setChartData] = useState<any>({
@@ -47,15 +47,15 @@ export default function HistoricalChart({ className = "" }: HistoricalChartProps
       {
         label: "Temperature (°C)",
         data: [],
-        borderColor: "rgba(255, 99, 132, 1)",
-        backgroundColor: "rgba(255, 99, 132, 0.2)",
+        borderColor: "#C14533",
+        backgroundColor: "rgba(193, 69, 51, 0.15)",
         tension: 0.4,
       },
       {
         label: "Humidity (%)",
         data: [],
-        borderColor: "rgba(54, 162, 235, 1)",
-        backgroundColor: "rgba(54, 162, 235, 0.2)",
+        borderColor: "#3D7EAA",
+        backgroundColor: "rgba(61, 126, 170, 0.15)",
         tension: 0.4,
       },
     ],
@@ -68,10 +68,8 @@ export default function HistoricalChart({ className = "" }: HistoricalChartProps
       setIsDarkMode(isDark)
     }
 
-    // Check on mount
     checkDarkMode()
 
-    // Set up a mutation observer to detect theme changes
     const observer = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
         if (
@@ -100,13 +98,9 @@ export default function HistoricalChart({ className = "" }: HistoricalChartProps
 
     setIsLoading(true)
     setError(null)
-    console.log(`Fetching historical data for period: ${chartPeriod}`)
 
     try {
-      // Instead of using orderByChild which requires an index,
-      // we'll fetch all data and sort it client-side
       const historyRef = ref(firebase.database, "/history")
-
       const snapshot = await get(historyRef)
       const data = snapshot.val()
 
@@ -116,9 +110,6 @@ export default function HistoricalChart({ className = "" }: HistoricalChartProps
         return
       }
 
-      console.log(`Raw data received: ${typeof data}, keys: ${Object.keys(data).length}`)
-
-      // Process the data
       processHistoricalData(data)
     } catch (err: any) {
       console.error("Error fetching historical data:", err)
@@ -129,14 +120,11 @@ export default function HistoricalChart({ className = "" }: HistoricalChartProps
 
   const processHistoricalData = (data: any) => {
     try {
-      // Convert to array and prepare for processing
       let dataArray: HistoryDataPoint[] = []
 
       if (typeof data === "object" && data !== null) {
         dataArray = Object.entries(data).map(([key, value]: [string, any]) => {
-          // Handle different data structures
           if (typeof value === "object" && value !== null) {
-            // Standard structure: { timestamp, temperature, humidity }
             return {
               id: key,
               timestamp: typeof value.timestamp === "string" ? Number(value.timestamp) : value.timestamp || 0,
@@ -144,34 +132,16 @@ export default function HistoricalChart({ className = "" }: HistoricalChartProps
               humidity: typeof value.humidity === "string" ? Number(value.humidity) : value.humidity,
             }
           } else if (typeof value === "number") {
-            // Simple structure: timestamp is the value
-            return {
-              id: key,
-              timestamp: value,
-              temperature: null,
-              humidity: null,
-            }
+            return { id: key, timestamp: value, temperature: null, humidity: null }
           } else {
-            // Unknown structure
-            console.log(`Unknown data structure for key ${key}: ${JSON.stringify(value)}`)
-            return {
-              id: key,
-              timestamp: 0,
-              temperature: null,
-              humidity: null,
-            }
+            return { id: key, timestamp: 0, temperature: null, humidity: null }
           }
         })
       }
 
-      console.log(`Processed ${dataArray.length} data points`)
-
-      // Filter invalid data points
       dataArray = dataArray.filter(
         (point) => point.timestamp > 0 && (point.temperature !== undefined || point.humidity !== undefined),
       )
-
-      console.log(`After filtering: ${dataArray.length} valid data points`)
 
       if (dataArray.length === 0) {
         setError("No valid data points found")
@@ -179,36 +149,32 @@ export default function HistoricalChart({ className = "" }: HistoricalChartProps
         return
       }
 
-      // Sort by timestamp
       dataArray.sort((a, b) => a.timestamp - b.timestamp)
 
-      // Filter by time period
       const now = Math.floor(Date.now() / 1000)
       let timeRange: number
       let pointsToShow: number
 
       switch (chartPeriod) {
         case "day":
-          // Start of today (midnight)
           const today = new Date()
           today.setHours(0, 0, 0, 0)
           timeRange = now - Math.floor(today.getTime() / 1000)
-          pointsToShow = 24 // Show up to 24 points for day view
+          pointsToShow = 24
           break
         case "week":
-          timeRange = 7 * 24 * 60 * 60 // 7 days
-          pointsToShow = 7 * 24 // Show up to 168 points for week view (hourly)
+          timeRange = 7 * 24 * 60 * 60
+          pointsToShow = 7 * 24
           break
         case "month":
-          timeRange = 30 * 24 * 60 * 60 // 30 days
-          pointsToShow = 30 * 24 // Show up to 720 points for month view (hourly)
+          timeRange = 30 * 24 * 60 * 60
+          pointsToShow = 30 * 24
           break
         default:
-          timeRange = 24 * 60 * 60 // Default to 24 hours
+          timeRange = 24 * 60 * 60
           pointsToShow = 24
       }
 
-      // For day view, only show data from the current day
       let startTime: number
       if (chartPeriod === "day") {
         const today = new Date()
@@ -220,8 +186,6 @@ export default function HistoricalChart({ className = "" }: HistoricalChartProps
 
       const filteredData = dataArray.filter((point) => point.timestamp >= startTime)
 
-      console.log(`Filtered by time period: ${filteredData.length} data points`)
-
       if (filteredData.length === 0) {
         if (chartPeriod === "day") {
           setError("No data available for today. Switch to Week or Month view to see historical data.")
@@ -231,29 +195,18 @@ export default function HistoricalChart({ className = "" }: HistoricalChartProps
           setTotalPages(1)
           setCurrentPage(0)
           return
-        } else {
-          // For week/month views, if no data in the selected period, use all available data
-          console.log("No data in selected period, using all available data")
         }
       }
 
-      // Use filtered data if available, otherwise use all data
       const dataToUse = filteredData.length > 0 ? filteredData : dataArray
 
-      // Store all filtered data
       setAllData(dataToUse)
-
-      // Set points per page based on chart period
       setPointsPerPage(pointsToShow)
 
-      // Calculate total pages
       const pages = Math.ceil(dataToUse.length / pointsToShow)
       setTotalPages(pages > 0 ? pages : 1)
-
-      // Reset to last page to show most recent data
       setCurrentPage(pages > 0 ? pages - 1 : 0)
 
-      // Update visible data
       updateVisibleData(dataToUse, pages - 1, pointsToShow)
 
       setIsLoading(false)
@@ -264,18 +217,14 @@ export default function HistoricalChart({ className = "" }: HistoricalChartProps
     }
   }
 
-  // Update visible data based on pagination
   const updateVisibleData = (data: HistoryDataPoint[], page: number, pointsPerPage: number) => {
     const startIdx = page * pointsPerPage
     const endIdx = Math.min(startIdx + pointsPerPage, data.length)
     const dataToShow = data.slice(startIdx, endIdx)
     setVisibleData(dataToShow)
-
-    // Update chart data
     updateChartData(dataToShow)
   }
 
-  // Update chart with visible data
   const updateChartData = (dataToShow: HistoryDataPoint[]) => {
     const labels: string[] = []
     const tempData: (number | null)[] = []
@@ -298,35 +247,35 @@ export default function HistoricalChart({ className = "" }: HistoricalChartProps
       humidityData.push(point.humidity !== undefined ? point.humidity : null)
     })
 
-    console.log(
-      `Chart data: ${labels.length} labels, ${tempData.filter(Boolean).length} temp points, ${humidityData.filter(Boolean).length} humidity points`,
-    )
-
-    // Update chart data
     setChartData({
       labels,
       datasets: [
         {
           label: "Temperature (°C)",
           data: tempData,
-          borderColor: "rgba(255, 99, 132, 1)",
-          backgroundColor: "rgba(255, 99, 132, 0.2)",
+          borderColor: "#C14533",
+          backgroundColor: "rgba(193, 69, 51, 0.15)",
           tension: 0.4,
           spanGaps: true,
+          pointRadius: 2,
+          pointHoverRadius: 5,
+          borderWidth: 2,
         },
         {
           label: "Humidity (%)",
           data: humidityData,
-          borderColor: "rgba(54, 162, 235, 1)",
-          backgroundColor: "rgba(54, 162, 235, 0.2)",
+          borderColor: "#3D7EAA",
+          backgroundColor: "rgba(61, 126, 170, 0.15)",
           tension: 0.4,
           spanGaps: true,
+          pointRadius: 2,
+          pointHoverRadius: 5,
+          borderWidth: 2,
         },
       ],
     })
   }
 
-  // Handle pagination
   const handlePrevPage = () => {
     if (currentPage > 0) {
       const newPage = currentPage - 1
@@ -343,26 +292,22 @@ export default function HistoricalChart({ className = "" }: HistoricalChartProps
     }
   }
 
-  // Handle period change
   const handlePeriodChange = (period: string) => {
     setChartPeriod(period)
-    setCurrentPage(0) // Reset pagination
-    fetchHistoricalData() // Refetch data for new period
+    setCurrentPage(0)
+    fetchHistoricalData()
   }
 
-  // Initial data load and setup auto-refresh
   useEffect(() => {
     fetchHistoricalData()
 
-    // Set up auto-refresh
     const refreshInterval = setInterval(() => {
       fetchHistoricalData()
-    }, 60000) // Refresh every 60 seconds
+    }, 60000)
 
     return () => clearInterval(refreshInterval)
   }, [chartPeriod])
 
-  // Get chart options based on current theme
   const getChartOptions = () => {
     return {
       responsive: true,
@@ -371,20 +316,22 @@ export default function HistoricalChart({ className = "" }: HistoricalChartProps
         y: {
           beginAtZero: false,
           grid: {
-            color: isDarkMode ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.1)",
+            color: isDarkMode ? "rgba(255, 255, 255, 0.06)" : "rgba(0, 0, 0, 0.06)",
           },
           ticks: {
-            color: isDarkMode ? "rgba(255, 255, 255, 0.7)" : "rgba(0, 0, 0, 0.7)",
+            color: isDarkMode ? "rgba(255, 255, 255, 0.6)" : "rgba(0, 0, 0, 0.5)",
+            font: { family: "DM Sans, system-ui, sans-serif", size: 11 },
           },
         },
         x: {
           ticks: {
             maxRotation: 45,
             minRotation: 45,
-            color: isDarkMode ? "rgba(255, 255, 255, 0.7)" : "rgba(0, 0, 0, 0.7)",
+            color: isDarkMode ? "rgba(255, 255, 255, 0.6)" : "rgba(0, 0, 0, 0.5)",
+            font: { family: "DM Sans, system-ui, sans-serif", size: 11 },
           },
           grid: {
-            color: isDarkMode ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.1)",
+            color: isDarkMode ? "rgba(255, 255, 255, 0.06)" : "rgba(0, 0, 0, 0.06)",
           },
         },
       },
@@ -392,107 +339,104 @@ export default function HistoricalChart({ className = "" }: HistoricalChartProps
         legend: {
           position: "top" as const,
           labels: {
-            color: isDarkMode ? "rgba(255, 255, 255, 0.9)" : "rgba(0, 0, 0, 0.9)",
-            font: {
-              size: 12,
-            },
+            color: isDarkMode ? "rgba(255, 255, 255, 0.8)" : "rgba(0, 0, 0, 0.7)",
+            font: { family: "Outfit, system-ui, sans-serif", size: 12 },
+            usePointStyle: true,
+            pointStyle: "circle",
           },
         },
         tooltip: {
           mode: "index" as const,
           intersect: false,
-          backgroundColor: isDarkMode ? "rgba(50, 50, 50, 0.8)" : "rgba(255, 255, 255, 0.8)",
-          titleColor: isDarkMode ? "rgba(255, 255, 255, 0.9)" : "rgba(0, 0, 0, 0.9)",
-          bodyColor: isDarkMode ? "rgba(255, 255, 255, 0.9)" : "rgba(0, 0, 0, 0.9)",
-          borderColor: isDarkMode ? "rgba(255, 255, 255, 0.2)" : "rgba(0, 0, 0, 0.2)",
+          backgroundColor: isDarkMode ? "rgba(30, 28, 24, 0.9)" : "rgba(255, 255, 255, 0.95)",
+          titleColor: isDarkMode ? "rgba(255, 255, 255, 0.9)" : "rgba(0, 0, 0, 0.8)",
+          bodyColor: isDarkMode ? "rgba(255, 255, 255, 0.8)" : "rgba(0, 0, 0, 0.7)",
+          borderColor: isDarkMode ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.1)",
           borderWidth: 1,
+          cornerRadius: 8,
+          titleFont: { family: "Outfit, system-ui, sans-serif" },
+          bodyFont: { family: "DM Sans, system-ui, sans-serif" },
         },
       },
     }
   }
 
   return (
-    <div className={`bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden ${className}`}>
-      <div className="bg-gray-700 text-white p-4 flex justify-between items-center">
-        <h2 className="text-lg font-semibold flex items-center">
-          <Settings className="mr-2" /> Historical Data
+    <div className={`glass-card overflow-hidden ${className}`}>
+      {/* Header */}
+      <div className="bg-card/80 backdrop-blur-sm p-4 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 border-b border-border/50">
+        <h2 className="font-heading text-lg font-semibold flex items-center text-foreground">
+          <div className="w-8 h-8 rounded-lg bg-gradient-warm flex items-center justify-center mr-3">
+            <Settings size={16} className="text-white" />
+          </div>
+          Historical Data
         </h2>
-        <div className="flex items-center">
-          <div className="flex mr-2">
-            <button
-              className={`px-3 py-1 text-sm rounded-l-md ${
-                chartPeriod === "day" ? "bg-blue-500 text-white" : "bg-gray-600 text-white"
-              }`}
-              onClick={() => handlePeriodChange("day")}
-            >
-              Day
-            </button>
-            <button
-              className={`px-3 py-1 text-sm ${
-                chartPeriod === "week" ? "bg-blue-500 text-white" : "bg-gray-600 text-white"
-              }`}
-              onClick={() => handlePeriodChange("week")}
-            >
-              Week
-            </button>
-            <button
-              className={`px-3 py-1 text-sm rounded-r-md ${
-                chartPeriod === "month" ? "bg-blue-500 text-white" : "bg-gray-600 text-white"
-              }`}
-              onClick={() => handlePeriodChange("month")}
-            >
-              Month
-            </button>
+        <div className="flex items-center gap-2">
+          <div className="flex rounded-lg overflow-hidden border border-border/50">
+            {["day", "week", "month"].map((period) => (
+              <button
+                key={period}
+                className={`px-3 py-1.5 text-xs font-medium transition-colors ${chartPeriod === period
+                    ? "bg-copper text-white"
+                    : "bg-muted/50 text-muted-foreground hover:text-foreground"
+                  }`}
+                onClick={() => handlePeriodChange(period)}
+              >
+                {period.charAt(0).toUpperCase() + period.slice(1)}
+              </button>
+            ))}
           </div>
           <button
             onClick={() => fetchHistoricalData()}
-            className="p-1 bg-gray-600 rounded-full hover:bg-gray-500 transition-colors"
+            className="p-1.5 rounded-lg bg-muted/50 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             title="Refresh data"
           >
-            <RefreshCw size={16} />
+            <RefreshCw size={14} />
           </button>
         </div>
       </div>
-      <div className="p-4 bg-white dark:bg-gray-800">
+
+      {/* Chart area */}
+      <div className="p-4">
         {isLoading ? (
           <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+            <div className="animate-spin rounded-full h-10 w-10 border-2 border-copper/30 border-t-copper"></div>
           </div>
         ) : error ? (
           <div className="flex flex-col items-center justify-center h-64">
-            <div className="text-red-500 mb-2">{error}</div>
-            <p className="text-gray-500 dark:text-gray-400 text-sm text-center max-w-md mb-4">
+            <div className="text-brick font-heading font-medium mb-2">{error}</div>
+            <p className="text-muted-foreground text-sm text-center max-w-md mb-4">
               Make sure your Arduino is sending data to the /history path in Firebase. The data should include
               timestamp, temperature, and humidity fields.
             </p>
             <button
               onClick={() => fetchHistoricalData()}
-              className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded-md text-sm"
+              className="px-4 py-2 bg-gradient-warm text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
             >
               Retry
             </button>
           </div>
         ) : (
           <>
-            <div className="h-64 bg-white dark:bg-gray-800">
+            <div className="h-64">
               <Line ref={chartRef} data={chartData} options={getChartOptions()} />
             </div>
 
             {/* Pagination controls */}
             {totalPages > 1 && (
-              <div className="flex justify-between items-center mt-4">
+              <div className="flex justify-between items-center mt-4 pt-3 border-t border-border/30">
                 <button
                   onClick={handlePrevPage}
                   disabled={currentPage === 0}
-                  className="p-1 bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50 text-gray-700 dark:text-gray-300"
+                  className="p-2 rounded-lg bg-muted/50 text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
                   <ChevronLeft size={16} />
                 </button>
-                <span className="text-sm text-gray-600 dark:text-gray-400">{`Page ${currentPage + 1} of ${totalPages}`}</span>
+                <span className="text-sm text-muted-foreground">{`Page ${currentPage + 1} of ${totalPages}`}</span>
                 <button
                   onClick={handleNextPage}
                   disabled={currentPage === totalPages - 1}
-                  className="p-1 bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50 text-gray-700 dark:text-gray-300"
+                  className="p-2 rounded-lg bg-muted/50 text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
                   <ChevronRight size={16} />
                 </button>

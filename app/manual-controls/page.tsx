@@ -6,7 +6,8 @@ import { initFirebase } from "@/lib/firebase"
 import { useAuth } from "@/contexts/auth-context"
 import LoadingAnimation from "@/components/loading-animation"
 import NavigationMenu from "@/components/navigation-menu"
-import { Fan, Lightbulb, Droplet, RefreshCw } from "lucide-react"
+import { Fan, Lightbulb, Droplet, RefreshCw, AlertTriangle } from "lucide-react"
+import { toast } from "sonner"
 
 export default function ManualControls() {
   const { isAuthenticated, isLoading: authLoading } = useAuth()
@@ -21,10 +22,7 @@ export default function ManualControls() {
 
   useEffect(() => {
     if (authLoading) return
-
-    if (!isAuthenticated) {
-      return
-    }
+    if (!isAuthenticated) return
 
     try {
       const firebaseInstance = initFirebase()
@@ -37,214 +35,132 @@ export default function ManualControls() {
       console.error("Firebase initialization error:", err)
       setError("Failed to initialize Firebase. Please check your connection.")
     } finally {
-      setTimeout(() => {
-        setIsLoading(false)
-      }, 1000)
+      setTimeout(() => setIsLoading(false), 1000)
     }
   }, [isAuthenticated, authLoading])
 
-  // Effect to listen for device states
   useEffect(() => {
-    if (!firebase?.database) {
-      return
-    }
-
+    if (!firebase?.database) return
     try {
       const deviceStatesRef = ref(firebase.database, "/deviceStates")
-
-      const unsubscribe = onValue(
-        deviceStatesRef,
-        (snapshot) => {
-          const data = snapshot.val()
-
-          if (!data) {
-            return
-          }
-
-          if (data.fan !== undefined) {
-            const fanValue = data.fan === true || data.fan === "true" || data.fan === 1 || data.fan === "1"
-            setFanState(!fanValue) // Invert to get the actual state
-          }
-
-          if (data.heat !== undefined) {
-            const heatValue = data.heat === true || data.heat === "true" || data.heat === 1 || data.heat === "1"
-            setHeatState(!heatValue) // Invert to get the actual state
-          }
-
-          if (data.pump !== undefined) {
-            const pumpValue = data.pump === true || data.pump === "true" || data.pump === 1 || data.pump === "1"
-            setPumpState(!pumpValue) // Invert to get the actual state
-          }
-
-          setLastDataRefresh(new Date())
-        },
-        (error) => {
-          console.error("Firebase device states error:", error)
-        },
-      )
-
-      return () => {
-        unsubscribe()
-      }
+      const unsubscribe = onValue(deviceStatesRef, (snapshot) => {
+        const data = snapshot.val()
+        if (!data) return
+        if (data.fan !== undefined) {
+          setFanState(!(data.fan === true || data.fan === "true" || data.fan === 1 || data.fan === "1"))
+        }
+        if (data.heat !== undefined) {
+          setHeatState(!(data.heat === true || data.heat === "true" || data.heat === 1 || data.heat === "1"))
+        }
+        if (data.pump !== undefined) {
+          setPumpState(!(data.pump === true || data.pump === "true" || data.pump === 1 || data.pump === "1"))
+        }
+        setLastDataRefresh(new Date())
+      }, (error) => console.error("Firebase device states error:", error))
+      return () => unsubscribe()
     } catch (err: any) {
       console.error("Error setting up device states listener:", err)
     }
   }, [firebase])
 
-  // Effect to listen for automation state
   useEffect(() => {
-    if (!firebase?.database) {
-      return
-    }
-
+    if (!firebase?.database) return
     try {
       const automationRef = ref(firebase.database, "/controls/automationEnabled")
-
-      const unsubscribe = onValue(
-        automationRef,
-        (snapshot) => {
-          const enabled = snapshot.val()
-          // FIX: Handle different data types for boolean values
-          const automationValue = enabled === true || enabled === "true" || enabled === 1 || enabled === "1"
-          setAutomationEnabled(automationValue)
-        },
-        (error) => {
-          console.error("Firebase automation state error:", error)
-        },
-      )
-
-      return () => {
-        unsubscribe()
-      }
+      const unsubscribe = onValue(automationRef, (snapshot) => {
+        const enabled = snapshot.val()
+        setAutomationEnabled(enabled === true || enabled === "true" || enabled === 1 || enabled === "1")
+      }, (error) => console.error("Firebase automation state error:", error))
+      return () => unsubscribe()
     } catch (err: any) {
       console.error("Error setting up automation state listener:", err)
     }
   }, [firebase])
 
-  // Toggle automation
   const toggleAutomation = () => {
-    if (!firebase?.database) {
-      return
-    }
-
+    if (!firebase?.database) return
     try {
       const newState = !automationEnabled
       setAutomationEnabled(newState)
       set(ref(firebase.database, "/controls/automationEnabled"), newState)
-        .then(() => console.log("Automation state updated in Firebase"))
-        .catch((err) => console.error("Error updating automation state:", err))
+        .then(() => toast.info(newState ? "Automation Enabled" : "Automation Disabled", {
+          description: newState ? "System will control devices automatically" : "Manual control mode active",
+        }))
+        .catch((err) => {
+          console.error("Error updating automation state:", err)
+          toast.error("Failed to toggle automation")
+        })
     } catch (err: any) {
       console.error("Error toggling automation:", err)
     }
   }
 
-  // Toggle fan
   const toggleFan = () => {
-    if (!firebase?.database) {
-      return
-    }
-
+    if (!firebase?.database) return
     try {
       const newState = !fanState
       setFanState(newState)
-
-      // Write the actual desired state to Firebase
-      // The Arduino expects true to mean ON and false to mean OFF
       set(ref(firebase.database, "/controls/fan"), newState)
-        .then(() => console.log("Fan state updated in Firebase"))
-        .catch((err) => console.error("Error updating fan state:", err))
+        .then(() => toast.success(newState ? "Fan Turned On" : "Fan Turned Off"))
+        .catch((err) => {
+          console.error("Error updating fan state:", err)
+          toast.error("Failed to toggle fan")
+        })
     } catch (err: any) {
       console.error("Error toggling fan:", err)
     }
   }
 
-  // Toggle heat
   const toggleHeat = () => {
-    if (!firebase?.database) {
-      return
-    }
-
+    if (!firebase?.database) return
     try {
       const newState = !heatState
       setHeatState(newState)
-
-      // Write the actual desired state to Firebase
-      // The Arduino expects true to mean ON and false to mean OFF
       set(ref(firebase.database, "/controls/heat"), newState)
-        .then(() => console.log("Heat state updated in Firebase"))
-        .catch((err) => console.error("Error updating heat state:", err))
+        .then(() => toast.success(newState ? "Heater Turned On" : "Heater Turned Off"))
+        .catch((err) => {
+          console.error("Error updating heat state:", err)
+          toast.error("Failed to toggle heater")
+        })
     } catch (err: any) {
       console.error("Error toggling heat:", err)
     }
   }
 
-  // Toggle pump
   const togglePump = () => {
-    if (!firebase?.database) {
-      return
-    }
-
+    if (!firebase?.database) return
     try {
       const newState = !pumpState
       setPumpState(newState)
-
-      // Write the actual desired state to Firebase
-      // The Arduino expects true to mean ON and false to mean OFF
       set(ref(firebase.database, "/controls/pump"), newState)
-        .then(() => console.log("Pump state updated in Firebase"))
-        .catch((err) => console.error("Error updating pump state:", err))
+        .then(() => toast.success(newState ? "Water Pump Turned On" : "Water Pump Turned Off"))
+        .catch((err) => {
+          console.error("Error updating pump state:", err)
+          toast.error("Failed to toggle pump")
+        })
     } catch (err: any) {
       console.error("Error toggling pump:", err)
     }
   }
 
-  // Manual data refresh function
   const refreshData = () => {
-    if (!firebase?.database) {
-      return
-    }
-
+    if (!firebase?.database) return
     try {
       const deviceStatesRef = ref(firebase.database, "/deviceStates")
-      onValue(
-        deviceStatesRef,
-        (snapshot) => {
-          const data = snapshot.val()
-
-          if (!data) {
-            return
-          }
-
-          if (data.fan !== undefined) {
-            const fanValue = data.fan === true || data.fan === "true" || data.fan === 1 || data.fan === "1"
-            setFanState(!fanValue) // Invert to get the actual state
-          }
-
-          if (data.heat !== undefined) {
-            const heatValue = data.heat === true || data.heat === "true" || data.heat === 1 || data.heat === "1"
-            setHeatState(!heatValue) // Invert to get the actual state
-          }
-
-          if (data.pump !== undefined) {
-            const pumpValue = data.pump === true || data.pump === "true" || data.pump === 1 || data.pump === "1"
-            setPumpState(!pumpValue) // Invert to get the actual state
-          }
-
-          setLastDataRefresh(new Date())
-        },
-        { onlyOnce: true },
-      )
+      onValue(deviceStatesRef, (snapshot) => {
+        const data = snapshot.val()
+        if (!data) return
+        if (data.fan !== undefined) setFanState(!(data.fan === true || data.fan === "true" || data.fan === 1 || data.fan === "1"))
+        if (data.heat !== undefined) setHeatState(!(data.heat === true || data.heat === "true" || data.heat === 1 || data.heat === "1"))
+        if (data.pump !== undefined) setPumpState(!(data.pump === true || data.pump === "true" || data.pump === 1 || data.pump === "1"))
+        setLastDataRefresh(new Date())
+      }, { onlyOnce: true })
 
       const automationRef = ref(firebase.database, "/controls/automationEnabled")
-      onValue(
-        automationRef,
-        (snapshot) => {
-          const enabled = snapshot.val()
-          const automationValue = enabled === true || enabled === "true" || enabled === 1 || enabled === "1"
-          setAutomationEnabled(automationValue)
-        },
-        { onlyOnce: true },
-      )
+      onValue(automationRef, (snapshot) => {
+        const enabled = snapshot.val()
+        setAutomationEnabled(enabled === true || enabled === "true" || enabled === 1 || enabled === "1")
+      }, { onlyOnce: true })
     } catch (err: any) {
       console.error("Error refreshing data:", err)
     }
@@ -256,29 +172,16 @@ export default function ManualControls() {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
-        <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md max-w-md w-full">
-          <div className="flex items-center justify-center text-red-500 mb-4">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-12 w-12"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-              />
-            </svg>
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <div className="glass-card-elevated p-8 max-w-md w-full mx-4 text-center animate-fade-in-up">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-destructive/10 mb-4">
+            <AlertTriangle className="w-7 h-7 text-destructive" />
           </div>
-          <h1 className="text-2xl font-bold text-center mb-4 dark:text-white">Connection Error</h1>
-          <p className="text-gray-600 dark:text-gray-300 text-center mb-6">{error}</p>
+          <h1 className="font-heading text-xl font-bold text-foreground mb-2">Connection Error</h1>
+          <p className="text-sm text-muted-foreground mb-6">{error}</p>
           <button
             onClick={() => window.location.reload()}
-            className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg"
+            className="w-full py-3 px-4 rounded-lg bg-gradient-warm text-white font-heading font-semibold text-sm hover:opacity-90 transition-opacity shadow-lg shadow-copper/20"
           >
             Retry Connection
           </button>
@@ -287,153 +190,128 @@ export default function ManualControls() {
     )
   }
 
+  const controls = [
+    {
+      name: "Fan Control",
+      icon: Fan,
+      state: fanState,
+      toggle: toggleFan,
+      gradient: "bg-gradient-sage",
+      onColor: "text-sage dark:text-sage-light",
+      bgActive: "bg-sage/10",
+      spinning: true,
+    },
+    {
+      name: "Heat Lamp",
+      icon: Lightbulb,
+      state: heatState,
+      toggle: toggleHeat,
+      gradient: "bg-gradient-warm",
+      onColor: "text-copper dark:text-copper-light",
+      bgActive: "bg-copper/10",
+      spinning: false,
+    },
+    {
+      name: "Water Pump",
+      icon: Droplet,
+      state: pumpState,
+      toggle: togglePump,
+      gradient: "bg-gradient-water",
+      onColor: "text-pond dark:text-pond-light",
+      bgActive: "bg-pond/10",
+      spinning: false,
+    },
+  ]
+
   return (
-    <div className="container mx-auto px-4 py-8 transition-colors duration-200 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <div className="min-h-screen bg-background transition-colors duration-200">
       <NavigationMenu />
 
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold dark:text-white">Manual Controls</h1>
-        <div className="flex items-center">
-          <button
-            onClick={refreshData}
-            className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-md mr-4 flex items-center"
-          >
-            <RefreshCw size={16} className="mr-1" />
-            Refresh Data
-          </button>
-          <div className="flex items-center">
-            <span className="mr-2 dark:text-white">Automation</span>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input type="checkbox" className="sr-only peer" checked={automationEnabled} onChange={toggleAutomation} />
-              <div className="w-11 h-6 bg-gray-200 dark:bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-            </label>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Fan Control */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
-          <div className="bg-gray-700 text-white p-4">
-            <h2 className="text-lg font-semibold flex items-center">
-              <Fan className="mr-2" size={20} />
-              Fan Control
-            </h2>
-          </div>
-          <div className="p-6 flex flex-col items-center">
-            <div
-              className={`w-32 h-32 rounded-full flex items-center justify-center mb-4 ${fanState ? "bg-green-100 dark:bg-green-900" : "bg-gray-100 dark:bg-gray-700"}`}
-            >
-              <Fan
-                size={64}
-                className={`${fanState ? "text-green-500 animate-spin" : "text-gray-400"}`}
-                style={{ animationDuration: "3s" }}
-              />
+      <main className="sidebar-content transition-all duration-300">
+        <div className="px-4 md:px-8 py-6 max-w-[1400px] mx-auto">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8 animate-fade-in-up">
+            <div>
+              <h1 className="font-heading text-2xl md:text-3xl font-bold text-foreground">Manual Controls</h1>
+              <p className="text-sm text-muted-foreground mt-1">Direct control over farm devices</p>
+              {lastDataRefresh && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Last updated: {lastDataRefresh.toLocaleTimeString()}
+                </p>
+              )}
             </div>
-            <p className="text-lg font-medium mb-4 dark:text-white">
-              Status: <span className={fanState ? "text-green-500" : "text-red-500"}>{fanState ? "ON" : "OFF"}</span>
-            </p>
-            <button
-              onClick={toggleFan}
-              disabled={automationEnabled}
-              className={`px-6 py-2 rounded-md font-medium ${
-                automationEnabled
-                  ? "bg-gray-300 text-gray-600 cursor-not-allowed dark:bg-gray-700 dark:text-gray-400"
-                  : fanState
-                    ? "bg-red-500 hover:bg-red-600 text-white"
-                    : "bg-green-500 hover:bg-green-600 text-white"
-              }`}
-            >
-              {fanState ? "Turn OFF" : "Turn ON"}
-            </button>
-            {automationEnabled && (
-              <p className="text-xs text-gray-500 mt-2 text-center">Disable automation to manually control the fan</p>
-            )}
-          </div>
-        </div>
-
-        {/* Heat Lamp Control */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
-          <div className="bg-gray-700 text-white p-4">
-            <h2 className="text-lg font-semibold flex items-center">
-              <Lightbulb className="mr-2" size={20} />
-              Heat Lamp Control
-            </h2>
-          </div>
-          <div className="p-6 flex flex-col items-center">
-            <div
-              className={`w-32 h-32 rounded-full flex items-center justify-center mb-4 ${heatState ? "bg-orange-100 dark:bg-orange-900" : "bg-gray-100 dark:bg-gray-700"}`}
-            >
-              <Lightbulb size={64} className={heatState ? "text-orange-500" : "text-gray-400"} />
+            <div className="flex items-center gap-3">
+              <button
+                onClick={refreshData}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 font-medium text-sm transition-colors"
+              >
+                <RefreshCw size={16} />
+                Refresh
+              </button>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium text-muted-foreground">Automation</span>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input type="checkbox" className="sr-only peer" checked={automationEnabled} onChange={toggleAutomation} />
+                  <div className="w-10 h-5 bg-muted peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary/40 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-border after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary" />
+                </label>
+              </div>
             </div>
-            <p className="text-lg font-medium mb-4 dark:text-white">
-              Status: <span className={heatState ? "text-orange-500" : "text-red-500"}>{heatState ? "ON" : "OFF"}</span>
-            </p>
-            <button
-              onClick={toggleHeat}
-              disabled={automationEnabled}
-              className={`px-6 py-2 rounded-md font-medium ${
-                automationEnabled
-                  ? "bg-gray-300 text-gray-600 cursor-not-allowed dark:bg-gray-700 dark:text-gray-400"
-                  : heatState
-                    ? "bg-red-500 hover:bg-red-600 text-white"
-                    : "bg-orange-500 hover:bg-orange-600 text-white"
-              }`}
-            >
-              {heatState ? "Turn OFF" : "Turn ON"}
-            </button>
-            {automationEnabled && (
-              <p className="text-xs text-gray-500 mt-2 text-center">
-                Disable automation to manually control the heat lamp
-              </p>
-            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {controls.map((ctrl, index) => {
+              const Icon = ctrl.icon
+              return (
+                <div
+                  key={ctrl.name}
+                  className="sensor-card overflow-hidden opacity-0 animate-fade-in-up"
+                  style={{ animationDelay: `${(index + 1) * 100}ms`, animationFillMode: "forwards" }}
+                >
+                  <div className="flex items-center gap-3 p-4 pb-3 border-b border-border/50">
+                    <div className={`w-10 h-10 rounded-xl ${ctrl.gradient} flex items-center justify-center`}>
+                      <Icon size={20} className="text-white" />
+                    </div>
+                    <h2 className="font-heading text-sm font-semibold text-foreground">{ctrl.name}</h2>
+                  </div>
+                  <div className="p-6 flex flex-col items-center">
+                    <div className={`w-28 h-28 rounded-full flex items-center justify-center mb-4 transition-colors duration-300 ${ctrl.state ? ctrl.bgActive : "bg-muted/50"
+                      }`}>
+                      <Icon
+                        size={56}
+                        className={`transition-colors duration-300 ${ctrl.state ? ctrl.onColor : "text-muted-foreground/40"} ${ctrl.state && ctrl.spinning ? "animate-spin" : ""
+                          }`}
+                        style={ctrl.state && ctrl.spinning ? { animationDuration: "3s" } : undefined}
+                      />
+                    </div>
+                    <p className="text-sm font-medium text-foreground mb-4">
+                      Status:{" "}
+                      <span className={ctrl.state ? ctrl.onColor : "text-destructive"}>
+                        {ctrl.state ? "ON" : "OFF"}
+                      </span>
+                    </p>
+                    <button
+                      onClick={ctrl.toggle}
+                      disabled={automationEnabled}
+                      className={`px-6 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${automationEnabled
+                        ? "bg-muted text-muted-foreground cursor-not-allowed"
+                        : ctrl.state
+                          ? "bg-destructive/10 text-destructive hover:bg-destructive/20"
+                          : "bg-primary/10 text-primary hover:bg-primary/20"
+                        }`}
+                    >
+                      {ctrl.state ? "Turn OFF" : "Turn ON"}
+                    </button>
+                    {automationEnabled && (
+                      <p className="text-[10px] text-muted-foreground mt-2 text-center">
+                        Disable automation to manually control
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
           </div>
         </div>
-
-        {/* Water Pump Control */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
-          <div className="bg-gray-700 text-white p-4">
-            <h2 className="text-lg font-semibold flex items-center">
-              <Droplet className="mr-2" size={20} />
-              Water Pump Control
-            </h2>
-          </div>
-          <div className="p-6 flex flex-col items-center">
-            <div
-              className={`w-32 h-32 rounded-full flex items-center justify-center mb-4 ${pumpState ? "bg-blue-100 dark:bg-blue-900" : "bg-gray-100 dark:bg-gray-700"}`}
-            >
-              <Droplet size={64} className={pumpState ? "text-blue-500" : "text-gray-400"} />
-            </div>
-            <p className="text-lg font-medium mb-4 dark:text-white">
-              Status: <span className={pumpState ? "text-blue-500" : "text-red-500"}>{pumpState ? "ON" : "OFF"}</span>
-            </p>
-            <button
-              onClick={togglePump}
-              disabled={automationEnabled}
-              className={`px-6 py-2 rounded-md font-medium ${
-                automationEnabled
-                  ? "bg-gray-300 text-gray-600 cursor-not-allowed dark:bg-gray-700 dark:text-gray-400"
-                  : pumpState
-                    ? "bg-red-500 hover:bg-red-600 text-white"
-                    : "bg-blue-500 hover:bg-blue-600 text-white"
-              }`}
-            >
-              {pumpState ? "Turn OFF" : "Turn ON"}
-            </button>
-            {automationEnabled && (
-              <p className="text-xs text-gray-500 mt-2 text-center">
-                Disable automation to manually control the water pump
-              </p>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {lastDataRefresh && (
-        <p className="text-xs text-gray-500 dark:text-gray-500 mt-4 text-right">
-          Last updated: {lastDataRefresh.toLocaleTimeString()}
-        </p>
-      )}
+      </main>
     </div>
   )
 }

@@ -10,11 +10,19 @@ import HistoricalChart from "@/components/historical-chart"
 import RecentAlerts from "@/components/recent-alerts"
 import NavigationMenu from "@/components/navigation-menu"
 import ClockDisplay from "@/components/clock-display"
-import ThemeToggle from "@/components/theme-toggle"
-import { LogOut, RefreshCw } from "lucide-react"
+import {
+  RefreshCw,
+  Thermometer,
+  Droplets,
+  Utensils,
+  FlaskConical,
+  Wifi,
+  WifiOff,
+  AlertTriangle,
+} from "lucide-react"
 
 export default function Dashboard() {
-  const { isAuthenticated, isLoading: authLoading, logout } = useAuth()
+  const { isAuthenticated, isLoading: authLoading } = useAuth()
   const [firebase, setFirebase] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -25,6 +33,7 @@ export default function Dashboard() {
   const [waterLevelDrinker, setWaterLevelDrinker] = useState<number | null>(null)
   const [automationEnabled, setAutomationEnabled] = useState(true)
   const [lastDataRefresh, setLastDataRefresh] = useState<Date | null>(null)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const [alerts, setAlerts] = useState<{
     highTemperature: boolean
     lowTemperature: boolean
@@ -69,6 +78,8 @@ export default function Dashboard() {
     if (!firebase?.database) {
       return
     }
+
+    setIsRefreshing(true)
 
     const sensorsRef = ref(firebase.database, "/sensors")
     get(sensorsRef)
@@ -137,9 +148,11 @@ export default function Dashboard() {
         }
 
         setLastDataRefresh(new Date())
+        setIsRefreshing(false)
       })
       .catch((error) => {
         console.error("Manual refresh error:", error)
+        setIsRefreshing(false)
       })
   }
 
@@ -281,35 +294,30 @@ export default function Dashboard() {
     }
   }, [firebase])
 
+  // Helper: get temperature color/status
+  const getTempStatus = () => {
+    if (temperature === null) return { color: "text-muted-foreground", bg: "bg-muted", label: "No Data" }
+    if (temperature > 32) return { color: "text-brick", bg: "bg-brick/10", label: "High" }
+    if (temperature < 24) return { color: "text-pond", bg: "bg-pond/10", label: "Low" }
+    return { color: "text-sage", bg: "bg-sage/10", label: "Optimal" }
+  }
+
   if (authLoading || isLoading) {
     return <LoadingAnimation />
   }
 
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
-        <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md max-w-md w-full">
-          <div className="flex items-center justify-center text-red-500 mb-4">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-12 w-12"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-              />
-            </svg>
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <div className="glass-card-elevated p-8 max-w-md w-full mx-4 text-center animate-fade-in-up">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-destructive/10 mb-4">
+            <AlertTriangle className="w-7 h-7 text-destructive" />
           </div>
-          <h1 className="text-2xl font-bold text-center mb-4 dark:text-white">Connection Error</h1>
-          <p className="text-gray-600 dark:text-gray-300 text-center mb-6">{error}</p>
+          <h1 className="font-heading text-xl font-bold text-foreground mb-2">Connection Error</h1>
+          <p className="text-sm text-muted-foreground mb-6">{error}</p>
           <button
             onClick={() => window.location.reload()}
-            className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg"
+            className="w-full py-3 px-4 rounded-lg bg-gradient-warm text-white font-heading font-semibold text-sm hover:opacity-90 transition-opacity shadow-lg shadow-copper/20"
           >
             Retry Connection
           </button>
@@ -318,240 +326,265 @@ export default function Dashboard() {
     )
   }
 
+  const tempStatus = getTempStatus()
+  const activeAlertCount = Object.values(alerts).filter(Boolean).length
+
   return (
-    <div className="container mx-auto px-4 py-8 transition-colors duration-200 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <div className="min-h-screen bg-background transition-colors duration-200">
       <NavigationMenu />
 
-      <header className="mb-8">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold dark:text-white">Smart IoT-Based Poultry Farming Solution</h1>
-            <p className="text-gray-600 dark:text-gray-400">Monitor and control your poultry farm in real-time</p>
-            {lastDataRefresh && (
-              <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                Last updated: {lastDataRefresh.toLocaleTimeString()}
-              </p>
-            )}
-          </div>
+      {/* Main content — pushed right by sidebar on desktop */}
+      <main className="sidebar-content transition-all duration-300">
+        <div className="px-4 md:px-8 py-6 max-w-[1400px] mx-auto">
 
-          <div className="mt-4 md:mt-0 md:mx-auto">
-            <ClockDisplay />
-          </div>
-
-          <div className="mt-4 md:mt-0 flex items-center">
-            <div className="mr-4">
-              <ThemeToggle />
-            </div>
-            <button
-              onClick={refreshData}
-              className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-md mr-4 flex items-center"
-            >
-              <RefreshCw size={16} className="mr-1" />
-              Refresh Data
-            </button>
-            <button
-              onClick={logout}
-              className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-md flex items-center"
-            >
-              <LogOut size={16} className="mr-1" />
-              Logout
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <CameraFeed />
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden relative">
-            <div
-              className={`bg-gray-700 text-white p-4 ${alerts.highTemperature || alerts.lowTemperature ? "bg-red-600" : ""}`}
-            >
-              <h2 className="text-lg font-semibold flex items-center">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5 mr-2"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-                  />
-                </svg>
-                Temperature
-              </h2>
-            </div>
-            <div className="p-4 text-center">
-              <div className="text-4xl font-bold dark:text-white">
-                {temperature !== null ? temperature.toFixed(1) : "--"}
-              </div>
-              <div className="text-gray-500 dark:text-gray-400">°C</div>
-              <div className="mt-4 bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 overflow-hidden">
-                <div
-                  className={`h-2.5 rounded-full ${
-                    temperature !== null
-                      ? temperature > 32
-                        ? "bg-red-500"
-                        : temperature < 24
-                          ? "bg-blue-500"
-                          : "bg-green-500"
-                      : "bg-gray-500"
-                  }`}
-                  style={{ width: `${temperature !== null ? Math.min(100, (temperature / 50) * 100) : 0}%` }}
-                ></div>
-              </div>
-              {(alerts.highTemperature || alerts.lowTemperature) && (
-                <div className="mt-2 text-sm text-red-600 dark:text-red-400 font-medium">
-                  {alerts.highTemperature ? "High temperature alert!" : "Low temperature alert!"}
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
-            <div className="bg-gray-700 text-white p-4">
-              <h2 className="text-lg font-semibold flex items-center">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5 mr-2"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
-                  />
-                </svg>
-                Humidity
-              </h2>
-            </div>
-            <div className="p-4 text-center">
-              <div className="text-4xl font-bold dark:text-white">{humidity !== null ? humidity.toFixed(1) : "--"}</div>
-              <div className="text-gray-500 dark:text-gray-400">%</div>
-              <div className="mt-4 bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 overflow-hidden">
-                <div
-                  className="h-2.5 rounded-full bg-blue-500"
-                  style={{ width: `${humidity !== null ? humidity : 0}%` }}
-                ></div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden relative">
-            <div className={`bg-gray-700 text-white p-4 ${alerts.lowFood ? "bg-red-600" : ""}`}>
-              <h2 className="text-lg font-semibold flex items-center">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5 mr-2"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
-                  />
-                </svg>
-                Food Level
-              </h2>
-            </div>
-            <div className="p-4 text-center">
-              <div className="text-4xl font-bold dark:text-white">{foodLevel !== null ? foodLevel : "--"}</div>
-              <div className="text-gray-500 dark:text-gray-400">%</div>
-              <div className="mt-4 bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 overflow-hidden">
-                <div
-                  className={`h-2.5 rounded-full ${foodLevel !== null && foodLevel < 20 ? "bg-red-500" : "bg-green-500"}`}
-                  style={{ width: `${foodLevel !== null ? foodLevel : 0}%` }}
-                ></div>
-              </div>
-              {alerts.lowFood && (
-                <div className="mt-2 text-sm text-red-600 dark:text-red-400 font-medium">Low food level alert!</div>
-              )}
-            </div>
-          </div>
-
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden relative">
-            <div
-              className={`bg-gray-700 text-white p-4 ${alerts.lowWaterMain || alerts.lowWaterDrinker || alerts.lowHydration ? "bg-red-600" : ""}`}
-            >
-              <h2 className="text-lg font-semibold flex items-center">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5 mr-2"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"
-                  />
-                </svg>
-                Water Levels
-              </h2>
-            </div>
-            <div className="p-4">
-              <div className="mb-4">
-                <div className="flex justify-between mb-1">
-                  <span className="dark:text-white">Main Tank</span>
-                  <span className="dark:text-white">{waterLevelMain !== null ? waterLevelMain : "--"}%</span>
-                </div>
-                <div className="bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 overflow-hidden">
-                  <div
-                    className={`h-2.5 rounded-full ${waterLevelMain !== null && waterLevelMain < 20 ? "bg-red-500" : "bg-blue-500"}`}
-                    style={{ width: `${waterLevelMain !== null ? waterLevelMain : 0}%` }}
-                  ></div>
-                </div>
-                {alerts.lowWaterMain && (
-                  <div className="mt-1 text-xs text-red-600 dark:text-red-400 font-medium">Low water level alert!</div>
-                )}
-              </div>
+          {/* ====== HEADER ====== */}
+          <header className="mb-8 animate-fade-in-up">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
-                <div className="flex justify-between mb-1">
-                  <span className="dark:text-white">Drinker</span>
-                  <span className="dark:text-white">{waterLevelDrinker !== null ? waterLevelDrinker : "--"}%</span>
-                </div>
-                <div className="bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 overflow-hidden">
-                  <div
-                    className={`h-2.5 rounded-full ${waterLevelDrinker !== null && waterLevelDrinker < 30 ? "bg-red-500" : "bg-blue-500"}`}
-                    style={{ width: `${waterLevelDrinker !== null ? waterLevelDrinker : 0}%` }}
-                  ></div>
-                </div>
-                {alerts.lowWaterDrinker && (
-                  <div className="mt-1 text-xs text-red-600 dark:text-red-400 font-medium">
-                    Low drinker water level alert!
+                <h1 className="font-heading text-2xl md:text-3xl font-bold text-foreground">
+                  Farm Overview
+                </h1>
+                <div className="flex items-center gap-3 mt-1">
+                  <p className="text-sm text-muted-foreground">
+                    Real-time monitoring dashboard
+                  </p>
+                  {/* Connection badge */}
+                  <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${firebase ? "bg-sage/10 text-sage dark:text-sage-light" : "bg-destructive/10 text-destructive"
+                    }`}>
+                    {firebase ? <Wifi size={12} /> : <WifiOff size={12} />}
+                    {firebase ? "Connected" : "Offline"}
                   </div>
-                )}
-                {alerts.lowHydration && (
-                  <div className="mt-2 text-xs text-red-600 dark:text-red-400 font-medium">
-                    Low hydration alert! Check water analytics.
-                  </div>
+                  {/* Alert count badge */}
+                  {activeAlertCount > 0 && (
+                    <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-destructive/10 text-destructive">
+                      <span className="w-1.5 h-1.5 rounded-full bg-destructive animate-pulse" />
+                      {activeAlertCount} Alert{activeAlertCount > 1 ? "s" : ""}
+                    </div>
+                  )}
+                </div>
+                {lastDataRefresh && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Last updated: {lastDataRefresh.toLocaleTimeString()}
+                  </p>
                 )}
               </div>
+
+              <div className="flex items-center gap-3">
+                <ClockDisplay />
+                <button
+                  onClick={refreshData}
+                  disabled={isRefreshing}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 font-medium text-sm transition-colors disabled:opacity-50"
+                >
+                  <RefreshCw size={16} className={isRefreshing ? "animate-spin" : ""} />
+                  Refresh
+                </button>
+              </div>
+            </div>
+          </header>
+
+          {/* ====== SENSOR CARDS GRID ====== */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+
+            {/* Camera Feed */}
+            <div className="animate-fade-in-up" style={{ animationDelay: "100ms" }}>
+              <CameraFeed />
+            </div>
+
+            {/* Sensor cards 2x2 grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+              {/* Temperature Card */}
+              <div className="sensor-card opacity-0 animate-fade-in-up" style={{ animationDelay: "150ms", animationFillMode: "forwards" }}>
+                <div className={`flex items-center gap-3 p-4 pb-3 border-b border-border/50 ${(alerts.highTemperature || alerts.lowTemperature) ? "bg-destructive/5" : ""
+                  }`}>
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${(alerts.highTemperature || alerts.lowTemperature)
+                    ? "bg-destructive/10"
+                    : "bg-gradient-warm"
+                    }`}>
+                    <Thermometer size={20} className={
+                      (alerts.highTemperature || alerts.lowTemperature) ? "text-destructive" : "text-white"
+                    } />
+                  </div>
+                  <div>
+                    <h3 className="font-heading text-sm font-semibold text-foreground">Temperature</h3>
+                    <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${tempStatus.bg} ${tempStatus.color}`}>
+                      {tempStatus.label}
+                    </span>
+                  </div>
+                </div>
+                <div className="p-4 pt-3">
+                  <div className="flex items-baseline gap-1 mb-3">
+                    <span className="font-heading text-3xl font-bold text-foreground animate-number-slide">
+                      {temperature !== null ? temperature.toFixed(1) : "--"}
+                    </span>
+                    <span className="text-sm text-muted-foreground">°C</span>
+                  </div>
+                  <div className="progress-bar-track">
+                    <div
+                      className="progress-bar-fill progress-fill-temp"
+                      style={{ width: `${temperature !== null ? Math.min(100, (temperature / 50) * 100) : 0}%` }}
+                    />
+                  </div>
+                  {(alerts.highTemperature || alerts.lowTemperature) && (
+                    <p className="mt-2 text-xs text-destructive font-medium flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-destructive animate-pulse" />
+                      {alerts.highTemperature ? "High temperature alert!" : "Low temperature alert!"}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Humidity Card */}
+              <div className="sensor-card opacity-0 animate-fade-in-up" style={{ animationDelay: "200ms", animationFillMode: "forwards" }}>
+                <div className="flex items-center gap-3 p-4 pb-3 border-b border-border/50">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-water flex items-center justify-center">
+                    <Droplets size={20} className="text-white" />
+                  </div>
+                  <div>
+                    <h3 className="font-heading text-sm font-semibold text-foreground">Humidity</h3>
+                    <span className="text-xs text-muted-foreground">Relative %</span>
+                  </div>
+                </div>
+                <div className="p-4 pt-3">
+                  <div className="flex items-baseline gap-1 mb-3">
+                    <span className="font-heading text-3xl font-bold text-foreground animate-number-slide">
+                      {humidity !== null ? humidity.toFixed(1) : "--"}
+                    </span>
+                    <span className="text-sm text-muted-foreground">%</span>
+                  </div>
+                  <div className="progress-bar-track">
+                    <div
+                      className="progress-bar-fill progress-fill-humidity"
+                      style={{ width: `${humidity !== null ? humidity : 0}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Food Level Card */}
+              <div className="sensor-card opacity-0 animate-fade-in-up" style={{ animationDelay: "250ms", animationFillMode: "forwards" }}>
+                <div className={`flex items-center gap-3 p-4 pb-3 border-b border-border/50 ${alerts.lowFood ? "bg-destructive/5" : ""
+                  }`}>
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${alerts.lowFood ? "bg-destructive/10" : "bg-gradient-sage"
+                    }`}>
+                    <Utensils size={20} className={alerts.lowFood ? "text-destructive" : "text-white"} />
+                  </div>
+                  <div>
+                    <h3 className="font-heading text-sm font-semibold text-foreground">Food Level</h3>
+                    <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${alerts.lowFood ? "bg-destructive/10 text-destructive" : "bg-sage/10 text-sage dark:text-sage-light"
+                      }`}>
+                      {foodLevel !== null ? (foodLevel < 20 ? "Low" : foodLevel < 50 ? "Medium" : "Good") : "N/A"}
+                    </span>
+                  </div>
+                </div>
+                <div className="p-4 pt-3">
+                  <div className="flex items-baseline gap-1 mb-3">
+                    <span className="font-heading text-3xl font-bold text-foreground animate-number-slide">
+                      {foodLevel !== null ? foodLevel : "--"}
+                    </span>
+                    <span className="text-sm text-muted-foreground">%</span>
+                  </div>
+                  <div className="progress-bar-track">
+                    <div
+                      className="progress-bar-fill progress-fill-food"
+                      style={{ width: `${foodLevel !== null ? foodLevel : 0}%` }}
+                    />
+                  </div>
+                  {alerts.lowFood && (
+                    <p className="mt-2 text-xs text-destructive font-medium flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-destructive animate-pulse" />
+                      Low food level alert!
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Water Levels Card */}
+              <div className="sensor-card opacity-0 animate-fade-in-up" style={{ animationDelay: "300ms", animationFillMode: "forwards" }}>
+                <div className={`flex items-center gap-3 p-4 pb-3 border-b border-border/50 ${(alerts.lowWaterMain || alerts.lowWaterDrinker || alerts.lowHydration) ? "bg-destructive/5" : ""
+                  }`}>
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${(alerts.lowWaterMain || alerts.lowWaterDrinker || alerts.lowHydration)
+                    ? "bg-destructive/10"
+                    : "bg-gradient-water"
+                    }`}>
+                    <FlaskConical size={20} className={
+                      (alerts.lowWaterMain || alerts.lowWaterDrinker || alerts.lowHydration) ? "text-destructive" : "text-white"
+                    } />
+                  </div>
+                  <div>
+                    <h3 className="font-heading text-sm font-semibold text-foreground">Water Levels</h3>
+                    <span className="text-xs text-muted-foreground">Main + Drinker</span>
+                  </div>
+                </div>
+                <div className="p-4 pt-3 space-y-3">
+                  {/* Main Tank */}
+                  <div>
+                    <div className="flex justify-between mb-1">
+                      <span className="text-xs font-medium text-muted-foreground">Main Tank</span>
+                      <span className="text-xs font-semibold text-foreground">
+                        {waterLevelMain !== null ? waterLevelMain : "--"}%
+                      </span>
+                    </div>
+                    <div className="progress-bar-track">
+                      <div
+                        className={`progress-bar-fill ${waterLevelMain !== null && waterLevelMain < 20 ? "bg-destructive" : "progress-fill-water"}`}
+                        style={{ width: `${waterLevelMain !== null ? waterLevelMain : 0}%` }}
+                      />
+                    </div>
+                    {alerts.lowWaterMain && (
+                      <p className="mt-1 text-xs text-destructive font-medium flex items-center gap-1">
+                        <span className="w-1 h-1 rounded-full bg-destructive animate-pulse" />
+                        Low water level!
+                      </p>
+                    )}
+                  </div>
+                  {/* Drinker */}
+                  <div>
+                    <div className="flex justify-between mb-1">
+                      <span className="text-xs font-medium text-muted-foreground">Drinker</span>
+                      <span className="text-xs font-semibold text-foreground">
+                        {waterLevelDrinker !== null ? waterLevelDrinker : "--"}%
+                      </span>
+                    </div>
+                    <div className="progress-bar-track">
+                      <div
+                        className={`progress-bar-fill ${waterLevelDrinker !== null && waterLevelDrinker < 30 ? "bg-destructive" : "progress-fill-water"}`}
+                        style={{ width: `${waterLevelDrinker !== null ? waterLevelDrinker : 0}%` }}
+                      />
+                    </div>
+                    {alerts.lowWaterDrinker && (
+                      <p className="mt-1 text-xs text-destructive font-medium flex items-center gap-1">
+                        <span className="w-1 h-1 rounded-full bg-destructive animate-pulse" />
+                        Low drinker water!
+                      </p>
+                    )}
+                    {alerts.lowHydration && (
+                      <p className="mt-1 text-xs text-destructive font-medium flex items-center gap-1">
+                        <span className="w-1 h-1 rounded-full bg-destructive animate-pulse" />
+                        Low hydration alert!
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
             </div>
           </div>
+
+          {/* ====== CHARTS & ALERTS ====== */}
+          <div className="space-y-6">
+            <div className="opacity-0 animate-fade-in-up" style={{ animationDelay: "400ms", animationFillMode: "forwards" }}>
+              <HistoricalChart />
+            </div>
+
+            <div className="opacity-0 animate-fade-in-up" style={{ animationDelay: "500ms", animationFillMode: "forwards" }}>
+              <RecentAlerts />
+            </div>
+          </div>
+
         </div>
-      </div>
-
-      <div className="mt-8">
-        <HistoricalChart />
-      </div>
-
-      <div className="mt-8">
-        <RecentAlerts />
-      </div>
+      </main>
     </div>
   )
 }
