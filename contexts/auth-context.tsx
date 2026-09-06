@@ -25,7 +25,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(false)
     }
 
-    // Small delay to ensure localStorage is available (client-side only)
     const timer = setTimeout(() => {
       checkAuth()
     }, 100)
@@ -49,8 +48,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [isAuthenticated, isLoading, router])
 
   const login = async (username: string, password: string) => {
-    // Simple hardcoded authentication
-    if (username === "admin" && password === "admin123") {
+    const expectedUsername = process.env.NEXT_PUBLIC_ADMIN_USERNAME
+    const expectedPassword = process.env.NEXT_PUBLIC_ADMIN_PASSWORD
+
+    if (
+      expectedUsername &&
+      expectedPassword &&
+      username === expectedUsername &&
+      password === expectedPassword
+    ) {
       setIsAuthenticated(true)
       localStorage.setItem("isAuthenticated", "true")
       return true

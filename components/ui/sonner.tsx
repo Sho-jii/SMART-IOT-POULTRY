@@ -17,21 +17,21 @@ const Toaster = ({ ...props }: ToasterProps) => {
       toastOptions={{
         classNames: {
           toast:
-            "group toast group-[.toaster]:bg-card/95 group-[.toaster]:backdrop-blur-xl group-[.toaster]:text-foreground group-[.toaster]:border-border/50 group-[.toaster]:shadow-xl group-[.toaster]:rounded-xl group-[.toaster]:font-body",
+            "group toast group-[.toaster]:bg-surface group-[.toaster]:text-foreground group-[.toaster]:border-border group-[.toaster]:shadow-md group-[.toaster]:rounded-xl group-[.toaster]:font-body",
           title: "group-[.toast]:font-heading group-[.toast]:font-semibold",
-          description: "group-[.toast]:text-muted-foreground group-[.toast]:text-sm",
+          description: "group-[.toast]:text-muted-foreground group-[.toast]:text-xs",
           actionButton:
-            "group-[.toast]:bg-primary group-[.toast]:text-primary-foreground group-[.toast]:rounded-lg group-[.toast]:font-medium",
+            "group-[.toast]:bg-accent group-[.toast]:text-accent-foreground group-[.toast]:rounded-lg group-[.toast]:font-medium",
           cancelButton:
-            "group-[.toast]:bg-muted group-[.toast]:text-muted-foreground group-[.toast]:rounded-lg",
+            "group-[.toast]:bg-surface-muted group-[.toast]:text-muted-foreground group-[.toast]:rounded-lg",
           success:
-            "group-[.toaster]:!bg-sage/10 group-[.toaster]:!border-sage/30 group-[.toaster]:!text-sage",
+            "group-[.toaster]:!bg-accent/10 group-[.toaster]:!border-accent/30 group-[.toaster]:!text-accent",
           error:
-            "group-[.toaster]:!bg-brick/10 group-[.toaster]:!border-brick/30 group-[.toaster]:!text-brick",
+            "group-[.toaster]:!bg-destructive/10 group-[.toaster]:!border-destructive/30 group-[.toaster]:!text-destructive",
           warning:
-            "group-[.toaster]:!bg-harvest/10 group-[.toaster]:!border-harvest/30 group-[.toaster]:!text-harvest",
+            "group-[.toaster]:!bg-warning/10 group-[.toaster]:!border-warning/30 group-[.toaster]:!text-warning",
           info:
-            "group-[.toaster]:!bg-pond/10 group-[.toaster]:!border-pond/30 group-[.toaster]:!text-pond",
+            "group-[.toaster]:!bg-surface-muted group-[.toaster]:!border-border group-[.toaster]:!text-foreground",
         },
       }}
       {...props}

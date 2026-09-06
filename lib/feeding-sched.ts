@@ -1,5 +1,5 @@
 import { ref, get, set } from "firebase/database"
-import { initFirebase } from "./firebase"
+import { initFirebase } from "@/services/firebase/client"
 import { calculateRecommendedGrams, calculateServoOpenTime } from "./feeding-utils"
 
 export async function runFeedingScheduleIfDue() {
@@ -20,7 +20,10 @@ export async function runFeedingScheduleIfDue() {
   if (lastRunHour === hour) return // already executed this hour
 
   const settingsSnap = await get(ref(firebase.database, "/feedingSettings"))
-  const { ageGroup, chickenCount } = settingsSnap.val()
+  const settings = settingsSnap.val() || {}
+  const ageGroup = settings.ageGroup || "adult"
+  const chickenCount = settings.chickenCount || 10
+
   const grams = calculateRecommendedGrams(ageGroup, chickenCount)
   const duration = calculateServoOpenTime(grams)
 
@@ -28,7 +31,7 @@ export async function runFeedingScheduleIfDue() {
   await set(ref(firebase.database, "/controls/feed"), true)
   await set(ref(firebase.database, "/feedingScheduleLastRun"), hour)
 
-  // Log
+  // Log to feedingLogs
   const timestamp = Math.floor(Date.now() / 1000)
   await set(ref(firebase.database, `/feedingLogs/${timestamp}`), {
     timestamp,
@@ -36,6 +39,6 @@ export async function runFeedingScheduleIfDue() {
     ageGroup,
     chickenCount,
     servoOpenTime: duration,
-    feedType: "scheduled"
+    feedType: "scheduled",
   })
 }

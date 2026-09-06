@@ -1,132 +1,214 @@
 "use client"
 
 import { useState } from "react"
-import NavigationMenu from "@/components/navigation-menu"
+import NavigationMenu from "@/components/common/navigation-menu"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Github, Mail, Linkedin, Globe, Code, Wrench, FileText, Brain } from "lucide-react"
+import { Github, Mail, Linkedin, Code, Wrench, FileText, Brain, Cpu, Server, Layout } from "lucide-react"
 
 export default function AboutPage() {
   const [activeTab, setActiveTab] = useState("system")
 
+  const teamMembers = [
+    {
+      name: "Jarib Sioco",
+      role: "Lead Software & Web Engineer",
+      icon: Code,
+      desc: "Architected and developed the responsive Next.js web application, real-time Firebase telemetry synchronizers, and camera streaming integration.",
+    },
+    {
+      name: "Ralf Carlo Legaspi",
+      role: "Hardware & IoT Systems Engineer",
+      icon: Wrench,
+      desc: "Engineered microcontroller circuits, sensor firmware on ESP32 / ESP32-CAM, and relay motor driver automation mechanisms.",
+    },
+    {
+      name: "Grace Melody Manalo",
+      role: "System Analyst & Research Documentation",
+      icon: FileText,
+      desc: "Formulated poultry health parameters, broiler growth stage algorithms, and comprehensive system testing methodologies.",
+    },
+    {
+      name: "Monica Bacay",
+      role: "Product Analyst & Quality Assurance",
+      icon: Brain,
+      desc: "Conducted usability testing, operational safety analysis, and documented system functional specifications.",
+    },
+  ]
+
   return (
-    <div className="min-h-screen bg-background transition-colors duration-200">
+    <div className="min-h-screen bg-background">
       <NavigationMenu />
 
-      <main className="sidebar-content transition-all duration-300">
-        <div className="px-4 md:px-8 py-6 max-w-[1400px] mx-auto">
-          <header className="mb-8 animate-fade-in-up">
-            <h1 className="font-heading text-2xl md:text-3xl font-bold text-foreground">About Our System</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Learn about the Smart IoT-Based Poultry Farming Solution and the team behind it
-            </p>
+      <main className="sidebar-content transition-all duration-200">
+        <div className="px-4 md:px-8 py-6 max-w-[1400px] mx-auto space-y-6">
+          <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <h1 className="font-heading text-2xl font-bold text-foreground tracking-tight">
+                About Smart IoT Poultry System
+              </h1>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Technical architecture, hardware specifications & engineering team
+              </p>
+            </div>
           </header>
 
           <Tabs defaultValue="system" value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-8">
-              <TabsTrigger value="system">About the System</TabsTrigger>
-              <TabsTrigger value="team">Our Team</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2 max-w-md mb-6 bg-surface-muted border border-border p-1 rounded-xl">
+              <TabsTrigger
+                value="system"
+                className="text-xs font-semibold rounded-lg data-[state=active]:bg-surface data-[state=active]:shadow-sm"
+              >
+                System Architecture
+              </TabsTrigger>
+              <TabsTrigger
+                value="team"
+                className="text-xs font-semibold rounded-lg data-[state=active]:bg-surface data-[state=active]:shadow-sm"
+              >
+                Engineering Team
+              </TabsTrigger>
             </TabsList>
 
+            {/* System Overview Tab */}
             <TabsContent value="system" className="space-y-6">
-              <div className="sensor-card p-6 opacity-0 animate-fade-in-up" style={{ animationDelay: "100ms", animationFillMode: "forwards" }}>
-                <h2 className="font-heading text-xl font-bold mb-4 text-foreground">Smart IoT-Based Poultry Farming Solution</h2>
-                <p className="text-sm text-muted-foreground mb-6">
-                  The Smart IoT-Based Poultry Farming Solution (SIPFS) aims to revolutionize traditional poultry farming by
-                  introducing automation, real-time monitoring, and data-driven management through Internet of Things (IoT)
-                  technology. This system integrates environmental sensors, actuators, and a web interface to monitor and
-                  control temperature, humidity, water, and feed levels in poultry houses.
+              <div className="bg-surface rounded-2xl border border-border p-6 shadow-sm">
+                <h2 className="font-heading text-lg font-bold mb-2 text-foreground">
+                  Smart IoT-Based Poultry Farming Solution (SIPFS)
+                </h2>
+                <p className="text-xs text-muted-foreground leading-relaxed mb-6">
+                  SIPFS is an integrated agro-industrial Internet of Things solution designed to
+                  revolutionize broiler farm management through automated environmental climate control,
+                  precision stage-based feed dispensing, hydration level regulation, and live video surveillance.
                 </p>
 
-                <h3 className="font-heading text-lg font-semibold mb-3 text-foreground">Key Features</h3>
+                <h3 className="font-heading text-sm font-semibold mb-3 text-foreground">
+                  Core Subsystems & Capabilities
+                </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                   {[
-                    { title: "Environmental Monitoring", desc: "Real-time tracking of temperature, humidity, and other environmental factors critical for poultry health." },
-                    { title: "Intelligent Feeding System", desc: "Automated feeding based on schedules and poultry age, with manual override capabilities." },
-                    { title: "Water Management", desc: "Monitoring of water levels, automated refilling, and hydration tracking for optimal poultry health." },
-                    { title: "Remote Monitoring", desc: "Access to farm conditions from anywhere through a responsive web dashboard with real-time updates." },
+                    {
+                      title: "Environmental Climate Monitoring",
+                      desc: "Continuous sampling of ambient house temperature, relative humidity, and environmental air conditions.",
+                    },
+                    {
+                      title: "Age-Calibrated Feeder Dispenser",
+                      desc: "Automated scheduled dispensing calibrated to bird age stage (Starter, Grower, Finisher) with ultrasonic hopper sensing.",
+                    },
+                    {
+                      title: "Hydration & Reservoir Management",
+                      desc: "Dual level capacitive tracking across storage reservoirs and broiler drinker lines with automated solenoid pumping.",
+                    },
+                    {
+                      title: "Real-time Telemetry & Tele-Operation",
+                      desc: "Sub-second Firebase Realtime Database sync and direct manual actuator overrides from any authenticated browser.",
+                    },
                   ].map((feature, i) => (
-                    <div key={i} className="p-4 rounded-lg bg-muted/50 border border-border/50">
-                      <h4 className="font-heading text-sm font-semibold text-foreground mb-1">{feature.title}</h4>
-                      <p className="text-xs text-muted-foreground">{feature.desc}</p>
+                    <div key={i} className="p-4 rounded-xl bg-surface-muted border border-border">
+                      <h4 className="font-heading text-xs font-semibold text-foreground mb-1">
+                        {feature.title}
+                      </h4>
+                      <p className="text-xs text-muted-foreground leading-relaxed">{feature.desc}</p>
                     </div>
                   ))}
                 </div>
 
-                <h3 className="font-heading text-lg font-semibold mb-3 text-foreground">Technology Stack</h3>
+                <h3 className="font-heading text-sm font-semibold mb-3 text-foreground">
+                  Technology Stack
+                </h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="p-4 rounded-lg bg-pond/5 border border-pond/10">
-                    <h4 className="font-heading text-sm font-semibold text-pond dark:text-pond-light mb-2">Frontend</h4>
-                    <ul className="list-disc list-inside text-xs text-muted-foreground space-y-1">
-                      <li>Next.js (React Framework)</li>
-                      <li>Tailwind CSS</li>
-                      <li>TypeScript</li>
-                      <li>Recharts for data visualization</li>
+                  <div className="p-4 rounded-xl bg-surface-muted border border-border">
+                    <div className="flex items-center gap-2 mb-2 text-accent">
+                      <Layout size={16} />
+                      <h4 className="font-heading text-xs font-semibold text-foreground">Frontend</h4>
+                    </div>
+                    <ul className="text-xs text-muted-foreground space-y-1">
+                      <li>• Next.js 15 (App Router)</li>
+                      <li>• React 19 & TypeScript</li>
+                      <li>• Tailwind CSS Design System</li>
+                      <li>• Chart.js Visualizations</li>
                     </ul>
                   </div>
-                  <div className="p-4 rounded-lg bg-sage/5 border border-sage/10">
-                    <h4 className="font-heading text-sm font-semibold text-sage dark:text-sage-light mb-2">Backend</h4>
-                    <ul className="list-disc list-inside text-xs text-muted-foreground space-y-1">
-                      <li>Firebase Realtime Database</li>
-                      <li>Firebase Authentication</li>
-                      <li>Server-side rendering</li>
-                      <li>Real-time data synchronization</li>
+
+                  <div className="p-4 rounded-xl bg-surface-muted border border-border">
+                    <div className="flex items-center gap-2 mb-2 text-accent">
+                      <Server size={16} />
+                      <h4 className="font-heading text-xs font-semibold text-foreground">Backend & Cloud</h4>
+                    </div>
+                    <ul className="text-xs text-muted-foreground space-y-1">
+                      <li>• Firebase Realtime Database</li>
+                      <li>• Realtime WebSocket Listeners</li>
+                      <li>• Camera Reverse Proxy Handlers</li>
+                      <li>• Local Session Gating</li>
                     </ul>
                   </div>
-                  <div className="p-4 rounded-lg bg-copper/5 border border-copper/10">
-                    <h4 className="font-heading text-sm font-semibold text-copper dark:text-copper-light mb-2">Hardware</h4>
-                    <ul className="list-disc list-inside text-xs text-muted-foreground space-y-1">
-                      <li>ESP32 Microcontroller</li>
-                      <li>ESP32-CAM Module</li>
-                      <li>DHT11 temperature/humidity sensor</li>
-                      <li>Ultrasonic sensor for food level detection</li>
-                      <li>Water Level Sensors</li>
-                      <li>Servo motor and relay for automation</li>
-                      <li>Cooling Fan, Heat Lamp and Water Pump</li>
+
+                  <div className="p-4 rounded-xl bg-surface-muted border border-border">
+                    <div className="flex items-center gap-2 mb-2 text-accent">
+                      <Cpu size={16} />
+                      <h4 className="font-heading text-xs font-semibold text-foreground">Microcontroller & Edge</h4>
+                    </div>
+                    <ul className="text-xs text-muted-foreground space-y-1">
+                      <li>• ESP32 Dual-Core SoC</li>
+                      <li>• ESP32-CAM Video Streamer</li>
+                      <li>• DHT11 & Ultrasonic Sensors</li>
+                      <li>• Multi-Channel Relay Drivers</li>
                     </ul>
                   </div>
                 </div>
               </div>
             </TabsContent>
 
+            {/* Team Tab */}
             <TabsContent value="team" className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {[
-                  { name: "Jarib Sioco", role: "Web Developer", icon: Code, iconColor: "text-pond", desc: "Developed the web interface and dashboard for the Smart Poultry Farming Solution, implementing the frontend components and Firebase integration." },
-                  { name: "Ralf Carlo Legaspi", role: "Hardware Engineer", icon: Wrench, iconColor: "text-sage", desc: "Designed and built the hardware components of the system, including sensor integration, microcontroller programming, and physical automation mechanisms." },
-                  { name: "Grace Melody Manalo", role: "Documentation & System Analyst", icon: FileText, iconColor: "text-harvest", desc: "Led the documentation efforts and provided valuable recommendations for system improvements based on research and user feedback analysis." },
-                  { name: "Monica Bacay", role: "Documentation & System Analyst", icon: Brain, iconColor: "text-copper", desc: "Contributed to the documentation and provided critical insights for system design and implementation, focusing on usability and practical applications." },
-                ].map((member, i) => {
+                {teamMembers.map((member, i) => {
                   const Icon = member.icon
                   return (
-                    <Card key={i} className="opacity-0 animate-fade-in-up" style={{ animationDelay: `${(i + 1) * 100}ms`, animationFillMode: "forwards" }}>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-lg flex items-center gap-2 font-heading">
-                          <Icon className={member.iconColor} size={18} />
-                          {member.name}
-                        </CardTitle>
-                        <CardDescription>{member.role}</CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="flex items-center gap-4 mb-4">
-                          <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-                            <span className="text-2xl opacity-50">👤</span>
+                    <div
+                      key={i}
+                      className="bg-surface rounded-2xl border border-border p-6 shadow-sm flex flex-col justify-between"
+                    >
+                      <div>
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="w-9 h-9 rounded-xl bg-surface-muted text-muted-foreground flex items-center justify-center">
+                            <Icon size={18} />
                           </div>
-                          <p className="text-xs text-muted-foreground">{member.desc}</p>
+                          <div>
+                            <h3 className="font-heading text-sm font-semibold text-foreground">
+                              {member.name}
+                            </h3>
+                            <p className="text-xs text-accent font-medium">{member.role}</p>
+                          </div>
                         </div>
-                      </CardContent>
-                      <CardFooter className="flex justify-start gap-2 pt-0">
-                        <a href="#" className="p-2 rounded-lg bg-muted/60 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+
+                        <p className="text-xs text-muted-foreground leading-relaxed mb-6">
+                          {member.desc}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2 pt-4 border-t border-border">
+                        <a
+                          href="#"
+                          className="p-2 rounded-lg bg-surface-muted text-muted-foreground hover:text-foreground hover:bg-border transition-colors text-xs"
+                          title="Contact"
+                        >
                           <Mail size={14} />
                         </a>
-                        <a href="#" className="p-2 rounded-lg bg-muted/60 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+                        <a
+                          href="#"
+                          className="p-2 rounded-lg bg-surface-muted text-muted-foreground hover:text-foreground hover:bg-border transition-colors text-xs"
+                          title="GitHub"
+                        >
                           <Github size={14} />
                         </a>
-                        <a href="#" className="p-2 rounded-lg bg-muted/60 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+                        <a
+                          href="#"
+                          className="p-2 rounded-lg bg-surface-muted text-muted-foreground hover:text-foreground hover:bg-border transition-colors text-xs"
+                          title="LinkedIn"
+                        >
                           <Linkedin size={14} />
                         </a>
-                      </CardFooter>
-                    </Card>
+                      </div>
+                    </div>
                   )
                 })}
               </div>

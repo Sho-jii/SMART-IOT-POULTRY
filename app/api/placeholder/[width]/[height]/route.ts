@@ -1,8 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server"
 
-export async function GET(request: NextRequest, { params }: { params: { width: string; height: string } }) {
-  const width = Number.parseInt(params.width, 10) || 640
-  const height = Number.parseInt(params.height, 10) || 480
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ width: string; height: string }> },
+) {
+  const resolvedParams = await params
+  const width = Number.parseInt(resolvedParams.width, 10) || 640
+  const height = Number.parseInt(resolvedParams.height, 10) || 480
 
   // Create a placeholder SVG
   const svg = `
