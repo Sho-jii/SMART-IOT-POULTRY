@@ -71,12 +71,18 @@ export default function AboutPage() {
             {/* System Overview Tab */}
             <TabsContent value="system" className="space-y-6">
               <div className="bg-surface rounded-2xl border border-border p-6 shadow-sm">
-                <h2 className="font-heading text-lg font-bold mb-2 text-foreground">
-                  Smart IoT-Based Poultry Farming Solution (SIPFS)
-                </h2>
-                <p className="text-xs text-muted-foreground leading-relaxed mb-6">
+                <div className="flex items-center gap-2 mb-3">
+                  <h2 className="font-heading text-lg font-bold text-foreground">
+                    Smart IoT-Based Poultry Farming Solution (SIPFS)
+                  </h2>
+                  <span className="text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full bg-accent/10 text-accent border border-accent/20">
+                    Academic Prototype
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed mb-3">
+                  Developed as a student prototype for the 2nd Year collegiate course <strong>Integrative Programming 1</strong>,
                   SIPFS is an integrated agro-industrial Internet of Things solution designed to
-                  revolutionize broiler farm management through automated environmental climate control,
+                  explore broiler farm automation through environmental climate control,
                   precision stage-based feed dispensing, hydration level regulation, and live video surveillance.
                 </p>
 
